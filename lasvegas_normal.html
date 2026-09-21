@@ -28,7 +28,7 @@
 
   <section class="card"><h2>기본 설정</h2><div class="settings-scroll"><div class="grid">
     <label>항목점수당 포인트<input id="unit" type="number" min="0" step="100" value="100"></label>
-    <label>1인 최대 획득/손실<input id="cap" type="number" min="0" step="100" value="10000"></label>
+    <label>1게임 최대 손실 (Max Lose)<input id="cap" type="number" min="0" step="100" value="10000"></label>
     <label>최대 배수<input id="maxMul" type="number" min="1" max="99" value="6"></label>
     <label>멀리건/배판 1회 비용<input id="cost" type="number" min="0" step="100" value="200"></label>
     <label>배틀컵 초기값<input id="cup" type="number" min="0" step="100" value="600"></label>
@@ -65,6 +65,7 @@ function complement(pair){return players.map((_,i)=>i).filter(i=>!pair.includes(
 function teamScore(pair,scores,par){const sorted=pair.map(i=>scores[i]).sort((a,b)=>a-b);return{sum:sorted[0]+sorted[1],best:sorted[0],worst:sorted[1],bonus:pair.reduce((t,i)=>t+bonus(scores[i],par),0)}}
 function vegasPoints(a,b){let av=a.bonus,bv=b.bonus;if(a.sum<b.sum)av++;else if(b.sum<a.sum)bv++;if(a.best<b.best)av++;else if(b.best<a.best)bv++;if(a.worst<b.worst)av++;else if(b.worst<a.worst)bv++;return[av,bv]}
 function names(pair){return pair.map(i=>players[i]).join('·')}
+function applyMaxLose(raw,maxLose){if(!maxLose)return raw.slice();const maxLoss=Math.abs(Math.min(...raw,0));if(maxLoss<=maxLose)return raw.slice();const ratio=maxLose/maxLoss;return raw.map(v=>v*ratio)}
 function calculate(){
   const unit=+$('unit').value||0,cap=+$('cap').value||0,maxMul=Math.max(1,+$('maxMul').value||1),cost=+$('cost').value||0,cupBase=+$('cup').value||0;
   let pair=$('firstPair').value.split(',').map(Number), rank=[0,1,2,3], total=[0,0,0,0], betsByPlayer=[0,0,0,0], pendingTie=0;
@@ -80,7 +81,7 @@ function calculate(){
     if(av!==bv){pendingTie=0;rank=stableRank(scores,rank);pair=[rank[0],rank[3]]}else pendingTie=Math.min(maxMul-1,pendingTie+1);
     $(`n${h}`).textContent=av===bv?`${names(pair)} 유지`:`${names(pair)} / ${names(complement(pair))}`;
   }
-  const used=players.map((_,i)=>(+$(`m${i}`).value||0)+betsByPlayer[i]),cupTotal=cupBase+used.reduce((a,b)=>a+b,0)*cost,capped=total.map(v=>cap?Math.max(-cap,Math.min(cap,v)):v),best=Math.max(...capped),winners=capped.map((v,i)=>v===best?i:-1).filter(i=>i>=0),cupShare=winners.length?cupTotal/winners.length:0;
+  const used=players.map((_,i)=>(+$(`m${i}`).value||0)+betsByPlayer[i]),cupTotal=cupBase+used.reduce((a,b)=>a+b,0)*cost,capped=applyMaxLose(total,cap),best=Math.max(...capped),winners=capped.map((v,i)=>v===best?i:-1).filter(i=>i>=0),cupShare=winners.length?cupTotal/winners.length:0;
   $('result').innerHTML=players.map((p,i)=>{const adjustment=capped[i]-total[i],fee=used[i]*cost,cup=winners.includes(i)?cupShare:0,final=capped[i]-fee+cup;return`<tr><td><b>${p}</b></td><td class="${total[i]>=0?'pos':'neg'}">${fmt(total[i])}</td><td class="${capped[i]>=0?'pos':'neg'}">${fmt(capped[i])}</td><td class="${adjustment>0?'pos':adjustment<0?'neg':'draw'}">${fmt(adjustment)}</td><td class="neg">${fee?'-'+fee.toLocaleString()+'P':'0P'}</td><td class="pos">${cup?'+'+cup.toLocaleString()+'P':'0P'}</td><td class="${final>=0?'pos':'neg'}">${fmt(final)}</td></tr>`}).join('');
   $('cupInfo').textContent=`배틀컵 ${cupTotal.toLocaleString()}P · 획득자 ${winners.map(i=>players[i]).join(', ')}${winners.length>1?' (균등 분배)':''}`;
 }
@@ -88,4 +89,4 @@ function fmt(v){return`${v>0?'+':''}${v.toLocaleString()}P`}
 function enforcePointBetLimit(t){if(!t.matches('input[id^="bet"]')||!t.checked)return true;const p=t.id.split('_')[1],count=document.querySelectorAll(`input[id^="bet"][id$="_${p}"]:checked`).length;if(count>2){t.checked=false;alert(`P${+p+1}의 포인트 배판은 라운드당 최대 2회까지 사용할 수 있습니다.`);return false}return true}
 document.addEventListener('input',e=>{enforcePointBetLimit(e.target);calculate()});document.addEventListener('change',e=>{enforcePointBetLimit(e.target);calculate()});calculate();
 </script>
-</main><style id="page-version-style">.page-version{width:min(1200px,calc(100% - 40px));margin:0 auto 28px;padding-top:14px;border-top:1px solid #dce5df;color:#7a8780;font-size:12px;text-align:right}</style><div class="page-version" id="page-version">최종 업데이트 · 2026.09.02 14:30 KST</div></body></html>
+</main><style id="page-version-style">.page-version{width:min(1200px,calc(100% - 40px));margin:0 auto 28px;padding-top:14px;border-top:1px solid #dce5df;color:#7a8780;font-size:12px;text-align:right}</style><div class="page-version" id="page-version">최종 업데이트 · 2026.09.21 18:04 KST</div></body></html>
