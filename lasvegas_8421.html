@@ -25,7 +25,7 @@
 <div class="grid">
 <label>환산점수 차이당<input id="unit" type="number" value="100" min="0" step="100">
 </label>
-<label>1인 최대 획득/손실<input id="cap" type="number" value="10000" min="0" step="100">
+<label>1게임 최대 손실 (Max Lose)<input id="cap" type="number" value="10000" min="0" step="100">
 </label>
 <label>최대 배수<input id="maxMul" type="number" value="6" min="1">
 </label>
@@ -186,9 +186,10 @@ ${P.map((_,i)=>`<td id="playerSettle${h}_${i}"></td>`).join('')}
 </tr>`)});
 function pairNames(a){return a.map(i=>P[i]).join('·')}function other(a){return[0,1,2,3].filter(i=>!a.includes(i))}function converted(p,s,par){const d=s-par,c=d<=-4?0:d===-3?1:d===-2?2:d===-1?3:d===0?4:d===1?5:6;return +$(`map${p}_${c}`).value||0}function fmt(v){return`${v>0?'+':''}${v.toLocaleString()}P`}
 function rank(vals,prev){return[0,1,2,3].sort((x,y)=>vals[y]-vals[x]||prev.indexOf(x)-prev.indexOf(y))}
+function applyMaxLose(raw,maxLose){if(!maxLose)return raw.slice();const maxLoss=Math.abs(Math.min(...raw,0));if(maxLoss<=maxLose)return raw.slice();const ratio=maxLose/maxLoss;return raw.map(v=>v*ratio)}
 function calc(){const unit=+$('unit').value||0,cap=+$('cap').value||0,max=Math.max(1,+$('maxMul').value||1),cost=+$('cost').value||0,cupBase=+$('cup').value||0;let pair=$('firstPair').value.split(',').map(Number),prev=[0,1,2,3],total=[0,0,0,0],bets=[0,0,0,0],pendingTie=0;
 for(let h=0;h<18;h++){const par=pars[h],scores=P.map((_,i)=>{const el=$(`s${h}_${i}`),v=Math.max(1,Math.min(par*2,+el.value||1));el.value=v;return v}),vals=scores.map((s,i)=>converted(i,s,par)),b=other(pair),uses=P.map((_,i)=>$(`bet${h}_${i}`).checked),mul=Math.min(max,1+pendingTie+uses.filter(Boolean).length);uses.forEach((x,i)=>{if(x)bets[i]++});const at=pair.reduce((n,i)=>n+vals[i],0),bt=b.reduce((n,i)=>n+vals[i],0),d=Math.abs(at-bt),point=d*unit*mul,w=at===bt?-1:at>bt?0:1,holeSettle=[0,0,0,0];pair.forEach(i=>{holeSettle[i]=w<0?0:w===0?point:-point;total[i]+=holeSettle[i]});b.forEach(i=>{holeSettle[i]=w<0?0:w===1?point:-point;total[i]+=holeSettle[i]});$(`mul${h}`).textContent=`×${mul}`;holeSettle.forEach((v,i)=>{$(`playerSettle${h}_${i}`).innerHTML=`<span class="${v>0?'pos':v<0?'neg':'draw'}">${fmt(v)}</span>`});$(`settleMul${h}`).innerHTML=`<b>×${mul}</b>`;$(`settleRow${h}`).classList.toggle('hot',mul>1);$(`a${h}`).innerHTML=`<span class="a">${pairNames(pair)}</span>`;$(`b${h}`).innerHTML=`<span class="b">${pairNames(b)}</span>`;vals.forEach((v,i)=>$(`v${h}_${i}`).textContent=v);$(`at${h}`).textContent=at;$(`bt${h}`).textContent=bt;$(`diff${h}`).textContent=d;$(`win${h}`).innerHTML=w<0?'<span class="draw">무승부 · 0P · 다음 홀 +1배</span>':`<span class="pos">${w?'B':'A'}팀 승 · ${fmt(point)}</span>`;if(h===17){$(`next${h}`).textContent='라운드 종료';continue}if(w>=0){pendingTie=0;prev=rank(vals,prev);pair=[prev[0],prev[3]]}else pendingTie=Math.min(max-1,pendingTie+1);$(`next${h}`).textContent=w<0?`${pairNames(pair)} 유지`:`${pairNames(pair)} / ${pairNames(other(pair))}`}
-const used=P.map((_,i)=>(+$(`m${i}`).value||0)+bets[i]),capped=total.map(v=>cap?Math.max(-cap,Math.min(cap,v)):v),best=Math.max(...capped),winners=capped.map((v,i)=>v===best?i:-1).filter(i=>i>=0),cupTotal=cupBase+used.reduce((a,b)=>a+b,0)*cost,share=cupTotal/winners.length;$('result').innerHTML=P.map((p,i)=>{const adj=capped[i]-total[i],fee=used[i]*cost,cup=winners.includes(i)?share:0,final=capped[i]-fee+cup;return`<tr>
+const used=P.map((_,i)=>(+$(`m${i}`).value||0)+bets[i]),capped=applyMaxLose(total,cap),best=Math.max(...capped),winners=capped.map((v,i)=>v===best?i:-1).filter(i=>i>=0),cupTotal=cupBase+used.reduce((a,b)=>a+b,0)*cost,share=cupTotal/winners.length;$('result').innerHTML=P.map((p,i)=>{const adj=capped[i]-total[i],fee=used[i]*cost,cup=winners.includes(i)?share:0,final=capped[i]-fee+cup;return`<tr>
 <td>
 <b>${p}</b>
 </td>
@@ -204,5 +205,5 @@ function enforcePointBetLimit(t){if(!t.matches('input[id^="bet"]')||!t.checked)r
 document.addEventListener('input',e=>{enforcePointBetLimit(e.target);if(!e.target.classList.contains('map'))calc()});document.addEventListener('change',e=>{enforcePointBetLimit(e.target);if(e.target.classList.contains('map'))validateMapInput(e.target);calc()});calc();
 </script>
 </main>
-<style id="page-version-style">.page-version{width:min(1200px,calc(100% - 40px));margin:0 auto 28px;padding-top:14px;border-top:1px solid #dce5df;color:#7a8780;font-size:12px;text-align:right}</style><div class="page-version" id="page-version">최종 업데이트 · 2026.09.02 14:30 KST</div></body>
+<style id="page-version-style">.page-version{width:min(1200px,calc(100% - 40px));margin:0 auto 28px;padding-top:14px;border-top:1px solid #dce5df;color:#7a8780;font-size:12px;text-align:right}</style><div class="page-version" id="page-version">최종 업데이트 · 2026.09.21 18:04 KST</div></body>
 </html>
