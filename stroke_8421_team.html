@@ -19,7 +19,7 @@
 <div class="grid">
 <label>8421 점수차이당<input id="unit" type="number" value="100" step="100">
 </label>
-<label>1인 최대 획득/손실<input id="cap" type="number" value="10000" step="1000">
+<label>1게임 최대 손실 (Max Lose)<input id="cap" type="number" value="10000" step="1000">
 </label>
 <label>배틀컵 초기값<input id="cup" type="number" value="600" step="100">
 </label>
@@ -103,24 +103,26 @@
 </td>
 </tr>`).join('');document.querySelectorAll('input').forEach(x=>x.addEventListener('change',read));read()}
 function read(e){let t=e?.target;if(t?.classList.contains('map')){let p=+t.dataset.p,i=+t.dataset.i,old=maps[p][i],v=+t.value,copy=maps[p].slice();copy[i]=v;if(copy.some((x,j)=>j<6&&x<=copy[j+1])){alert('상위 스코어 등급은 아래 등급보다 반드시 커야 합니다.');t.value=old}else maps[p][i]=v}if(t?.classList.contains('score')){let h=+t.dataset.h,p=+t.dataset.p,v=Math.max(1,Math.min(pars[h]*2,+t.value||1));t.value=v;scores[h][p]=v}if(t?.classList.contains('point')){let h=+t.dataset.h,p=+t.dataset.p;if(t.checked&&point.reduce((a,r)=>a+r[p],0)>=2){t.checked=false;alert('포인트 배판은 플레이어별 최대 2회입니다.')}point[h][p]=t.checked?1:0}calc()}
-function cv(p,s,par){let d=s-par,i=d<=-4?0:d===-3?1:d===-2?2:d===-1?3:d===0?4:d===1?5:6;return maps[p][i]}function capZero(a,c){if(!c)return a.slice();let o=a.map(v=>Math.max(-c,Math.min(c,v)));for(let k=0;k<20;k++){let s=o.reduce((x,y)=>x+y,0);if(Math.abs(s)<1)break;let ids=o.map((v,i)=>i).filter(i=>s>0?o[i]>-c:o[i]<c);if(!ids.length)break;ids.forEach(i=>o[i]-=s/ids.length)}return o}
-function calc(){let round=[0,0,0,0],wins=[0,0],mul=1,max=n('maxMul');scores.forEach((r,h)=>{let vals=r.map((s,p)=>cv(p,s,pars[h])),rt=vals[0]+vals[1],bt=vals[2]+vals[3],used=point[h].reduce((a,b)=>a+b,0),ap=Math.min(max,mul+used),o='동타 · 다음 홀 +1배';if(rt!==bt){let w=rt>bt?0:1,d=Math.abs(rt-bt)*n('unit')*ap;wins[w]++;round=round.map((v,p)=>v+(team(p)===w?d:-d));o=`${w?'Blue':'Red'} 승 · 환산차 ${Math.abs(rt-bt)} · 각 ${sign(d)}`;mul=1}else mul=Math.min(max,mul+1);let tr=document.querySelectorAll('#holes tr')[h];tr.querySelector('.mul').textContent=`×${ap}`;tr.querySelector('.out').innerHTML=`R ${rt} / B ${bt}<br>${o}`});let capped=capZero(round,n('cap')),m=[...document.querySelectorAll('.mull')].map(x=>Math.max(0,+x.value||0)),uses=[0,1,2,3].map(p=>point.reduce((a,r)=>a+r[p],0)),fees=m.map((v,p)=>(v+uses[p])*n('cost')),after=capped.map((v,p)=>v-fees[p]),cup=n('cup')+fees.reduce((a,b)=>a+b,0),w=wins[0]===wins[1]?-1:wins[0]>wins[1]?0:1,share=w<0?0:cup/2,final=after.map((v,p)=>v+(team(p)===w?share:0));$('result').innerHTML=`<p class="summary">홀 승리 Red ${wins[0]} / Blue ${wins[1]}</p>
+function cv(p,s,par){let d=s-par,i=d<=-4?0:d===-3?1:d===-2?2:d===-1?3:d===0?4:d===1?5:6;return maps[p][i]}function applyMaxLose(raw,maxLose){if(!maxLose)return raw.slice();const maxLoss=Math.abs(Math.min(...raw,0));if(maxLoss<=maxLose)return raw.slice();const ratio=maxLose/maxLoss;return raw.map(v=>v*ratio)}
+function calc(){let round=[0,0,0,0],wins=[0,0],mul=1,max=n('maxMul');scores.forEach((r,h)=>{let vals=r.map((s,p)=>cv(p,s,pars[h])),rt=vals[0]+vals[1],bt=vals[2]+vals[3],used=point[h].reduce((a,b)=>a+b,0),ap=Math.min(max,mul+used),o='동타 · 다음 홀 +1배';if(rt!==bt){let w=rt>bt?0:1,d=Math.abs(rt-bt)*n('unit')*ap;wins[w]++;round=round.map((v,p)=>v+(team(p)===w?d:-d));o=`${w?'Blue':'Red'} 승 · 환산차 ${Math.abs(rt-bt)} · 각 ${sign(d)}`;mul=1}else mul=Math.min(max,mul+1);let tr=document.querySelectorAll('#holes tr')[h];tr.querySelector('.mul').textContent=`×${ap}`;tr.querySelector('.out').innerHTML=`R ${rt} / B ${bt}<br>${o}`});let capped=applyMaxLose(round,n('cap')),m=[...document.querySelectorAll('.mull')].map(x=>Math.max(0,+x.value||0)),uses=[0,1,2,3].map(p=>point.reduce((a,r)=>a+r[p],0)),fees=m.map((v,p)=>(v+uses[p])*n('cost')),after=capped.map((v,p)=>v-fees[p]),cup=n('cup')+fees.reduce((a,b)=>a+b,0),w=wins[0]===wins[1]?-1:wins[0]>wins[1]?0:1,share=w<0?0:cup/2,final=after.map((v,p)=>v+(team(p)===w?share:0));$('result').innerHTML=`<p class="summary">홀 승리 Red ${wins[0]} / Blue ${wins[1]}</p>
 <div class="scroll">
 <table>
 <tr>
 <th>플레이어</th>
 <th>상한 적용 전</th>
 <th>상한 적용 후</th>
+<th>조정값</th>
 <th>멀리건/배판 차감</th>
 <th>배틀컵 포함 최종</th>
 </tr>${[0,1,2,3].map(p=>`<tr>
 <td>P${p+1}</td>
 <td>${sign(round[p])}</td>
 <td>${sign(capped[p])}</td>
+<td>${sign(capped[p]-round[p])}</td>
 <td>${sign(-fees[p])}</td>
 <td>${sign(final[p])}</td>
 </tr>`).join('')}</table>
 </div>`;$('cupOut').innerHTML=w<0?`배틀컵 ${cup.toLocaleString()}P 이월 · 라운드 동률`:`<p class="summary">${w?'Blue':'Red'} 팀 우승 · 배틀컵 ${cup.toLocaleString()}P, 팀원 각 ${share.toLocaleString()}P</p>`}init();</script>
 </main>
-<style id="page-version-style">.page-version{width:min(1200px,calc(100% - 40px));margin:0 auto 28px;padding-top:14px;border-top:1px solid #dce5df;color:#7a8780;font-size:12px;text-align:right}</style><div class="page-version" id="page-version">최종 업데이트 · 2026.09.02 14:30 KST</div></body>
+<style id="page-version-style">.page-version{width:min(1200px,calc(100% - 40px));margin:0 auto 28px;padding-top:14px;border-top:1px solid #dce5df;color:#7a8780;font-size:12px;text-align:right}</style><div class="page-version" id="page-version">최종 업데이트 · 2026.09.21 18:04 KST</div></body>
 </html>
